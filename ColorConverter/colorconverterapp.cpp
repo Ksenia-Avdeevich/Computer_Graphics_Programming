@@ -3,6 +3,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QFormLayout>
+#include <QRegularExpressionValidator>
 
 ColorConverterApp::ColorConverterApp(QWidget *parent)
     : QMainWindow(parent), updatingFromRGB(false), updatingFromCMYK(false), updatingFromHSV(false)
@@ -20,12 +21,41 @@ ColorConverterApp::ColorConverterApp(QWidget *parent)
 
 ColorConverterApp::~ColorConverterApp() {}
 
-// Добавлено определение метода createSliderSpinLayout
-QHBoxLayout* ColorConverterApp::createSliderSpinLayout(QSlider *slider, QWidget *spin)
+QHBoxLayout* ColorConverterApp::createSliderSpinLayout(QSlider *slider, QWidget *spin, QLineEdit *edit)
 {
     QHBoxLayout *layout = new QHBoxLayout;
     layout->addWidget(slider);
     layout->addWidget(spin);
+    if (edit) {
+        layout->addWidget(edit);
+    }
+    return layout;
+}
+
+QHBoxLayout* ColorConverterApp::createRGBRow(QSlider *slider, QSpinBox *spin, QLineEdit *edit)
+{
+    QHBoxLayout *layout = new QHBoxLayout;
+    layout->addWidget(slider);
+    layout->addWidget(spin);
+    layout->addWidget(edit);
+    return layout;
+}
+
+QHBoxLayout* ColorConverterApp::createCMYKRow(QSlider *slider, QDoubleSpinBox *spin, QLineEdit *edit)
+{
+    QHBoxLayout *layout = new QHBoxLayout;
+    layout->addWidget(slider);
+    layout->addWidget(spin);
+    layout->addWidget(edit);
+    return layout;
+}
+
+QHBoxLayout* ColorConverterApp::createHSVRow(QSlider *slider, QSpinBox *spin, QLineEdit *edit)
+{
+    QHBoxLayout *layout = new QHBoxLayout;
+    layout->addWidget(slider);
+    layout->addWidget(spin);
+    layout->addWidget(edit);
     return layout;
 }
 
@@ -69,9 +99,28 @@ void ColorConverterApp::setupUI()
     gSpin->setRange(0, 255);
     bSpin->setRange(0, 255);
 
-    rgbLayout->addRow("R:", createSliderSpinLayout(rSlider, rSpin));
-    rgbLayout->addRow("G:", createSliderSpinLayout(gSlider, gSpin));
-    rgbLayout->addRow("B:", createSliderSpinLayout(bSlider, bSpin));
+    // Создаем поля для ручного ввода RGB
+    rEdit = new QLineEdit;
+    gEdit = new QLineEdit;
+    bEdit = new QLineEdit;
+
+    // Устанавливаем валидаторы для полей ввода
+    QRegularExpressionValidator *rgbValidator = new QRegularExpressionValidator(QRegularExpression("\\d*"), this);
+    rEdit->setValidator(rgbValidator);
+    gEdit->setValidator(rgbValidator);
+    bEdit->setValidator(rgbValidator);
+
+    rEdit->setMaximumWidth(50);
+    gEdit->setMaximumWidth(50);
+    bEdit->setMaximumWidth(50);
+
+    rEdit->setPlaceholderText("0-255");
+    gEdit->setPlaceholderText("0-255");
+    bEdit->setPlaceholderText("0-255");
+
+    rgbLayout->addRow("R:", createRGBRow(rSlider, rSpin, rEdit));
+    rgbLayout->addRow("G:", createRGBRow(gSlider, gSpin, gEdit));
+    rgbLayout->addRow("B:", createRGBRow(bSlider, bSpin, bEdit));
 
     // Группа CMYK
     QGroupBox *cmykGroup = new QGroupBox("CMYK Model", this);
@@ -101,10 +150,33 @@ void ColorConverterApp::setupUI()
     ySpin->setDecimals(1);
     kSpin->setDecimals(1);
 
-    cmykLayout->addRow("C:", createSliderSpinLayout(cSlider, cSpin));
-    cmykLayout->addRow("M:", createSliderSpinLayout(mSlider, mSpin));
-    cmykLayout->addRow("Y:", createSliderSpinLayout(ySlider, ySpin));
-    cmykLayout->addRow("K:", createSliderSpinLayout(kSlider, kSpin));
+    // Создаем поля для ручного ввода CMYK
+    cEdit = new QLineEdit;
+    mEdit = new QLineEdit;
+    yEdit = new QLineEdit;
+    kEdit = new QLineEdit;
+
+    // Устанавливаем валидаторы для полей ввода CMYK
+    QRegularExpressionValidator *cmykValidator = new QRegularExpressionValidator(QRegularExpression("\\d*\\.?\\d*"), this);
+    cEdit->setValidator(cmykValidator);
+    mEdit->setValidator(cmykValidator);
+    yEdit->setValidator(cmykValidator);
+    kEdit->setValidator(cmykValidator);
+
+    cEdit->setMaximumWidth(50);
+    mEdit->setMaximumWidth(50);
+    yEdit->setMaximumWidth(50);
+    kEdit->setMaximumWidth(50);
+
+    cEdit->setPlaceholderText("0-100");
+    mEdit->setPlaceholderText("0-100");
+    yEdit->setPlaceholderText("0-100");
+    kEdit->setPlaceholderText("0-100");
+
+    cmykLayout->addRow("C:", createCMYKRow(cSlider, cSpin, cEdit));
+    cmykLayout->addRow("M:", createCMYKRow(mSlider, mSpin, mEdit));
+    cmykLayout->addRow("Y:", createCMYKRow(ySlider, ySpin, yEdit));
+    cmykLayout->addRow("K:", createCMYKRow(kSlider, kSpin, kEdit));
 
     // Группа HSV
     QGroupBox *hsvGroup = new QGroupBox("HSV Model", this);
@@ -126,9 +198,28 @@ void ColorConverterApp::setupUI()
     sSpin->setRange(0, 255);
     vSpin->setRange(0, 255);
 
-    hsvLayout->addRow("H:", createSliderSpinLayout(hSlider, hSpin));
-    hsvLayout->addRow("S:", createSliderSpinLayout(sSlider, sSpin));
-    hsvLayout->addRow("V:", createSliderSpinLayout(vSlider, vSpin));
+    // Создаем поля для ручного ввода HSV
+    hEdit = new QLineEdit;
+    sEdit = new QLineEdit;
+    vEdit = new QLineEdit;
+
+    // Устанавливаем валидаторы для полей ввода HSV
+    QRegularExpressionValidator *hsvValidator = new QRegularExpressionValidator(QRegularExpression("\\d*"), this);
+    hEdit->setValidator(hsvValidator);
+    sEdit->setValidator(hsvValidator);
+    vEdit->setValidator(hsvValidator);
+
+    hEdit->setMaximumWidth(50);
+    sEdit->setMaximumWidth(50);
+    vEdit->setMaximumWidth(50);
+
+    hEdit->setPlaceholderText("0-359");
+    sEdit->setPlaceholderText("0-255");
+    vEdit->setPlaceholderText("0-255");
+
+    hsvLayout->addRow("H:", createHSVRow(hSlider, hSpin, hEdit));
+    hsvLayout->addRow("S:", createHSVRow(sSlider, sSpin, sEdit));
+    hsvLayout->addRow("V:", createHSVRow(vSlider, vSpin, vEdit));
 
     // Компоновка
     mainLayout->addWidget(colorDisplay);
@@ -151,6 +242,11 @@ void ColorConverterApp::connectSignals()
     connect(gSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &ColorConverterApp::updateFromRGB);
     connect(bSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &ColorConverterApp::updateFromRGB);
 
+    // Подключаем поля ручного ввода RGB
+    connect(rEdit, &QLineEdit::editingFinished, this, &ColorConverterApp::onRGBTextChanged);
+    connect(gEdit, &QLineEdit::editingFinished, this, &ColorConverterApp::onRGBTextChanged);
+    connect(bEdit, &QLineEdit::editingFinished, this, &ColorConverterApp::onRGBTextChanged);
+
     // CMYK сигналы
     connect(cSlider, &QSlider::valueChanged, this, &ColorConverterApp::updateFromCMYK);
     connect(mSlider, &QSlider::valueChanged, this, &ColorConverterApp::updateFromCMYK);
@@ -161,6 +257,12 @@ void ColorConverterApp::connectSignals()
     connect(ySpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ColorConverterApp::updateFromCMYK);
     connect(kSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ColorConverterApp::updateFromCMYK);
 
+    // Подключаем поля ручного ввода CMYK
+    connect(cEdit, &QLineEdit::editingFinished, this, &ColorConverterApp::onCMYKTextChanged);
+    connect(mEdit, &QLineEdit::editingFinished, this, &ColorConverterApp::onCMYKTextChanged);
+    connect(yEdit, &QLineEdit::editingFinished, this, &ColorConverterApp::onCMYKTextChanged);
+    connect(kEdit, &QLineEdit::editingFinished, this, &ColorConverterApp::onCMYKTextChanged);
+
     // HSV сигналы
     connect(hSlider, &QSlider::valueChanged, this, &ColorConverterApp::updateFromHSV);
     connect(sSlider, &QSlider::valueChanged, this, &ColorConverterApp::updateFromHSV);
@@ -169,8 +271,116 @@ void ColorConverterApp::connectSignals()
     connect(sSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &ColorConverterApp::updateFromHSV);
     connect(vSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &ColorConverterApp::updateFromHSV);
 
+    // Подключаем поля ручного ввода HSV
+    connect(hEdit, &QLineEdit::editingFinished, this, &ColorConverterApp::onHSVTextChanged);
+    connect(sEdit, &QLineEdit::editingFinished, this, &ColorConverterApp::onHSVTextChanged);
+    connect(vEdit, &QLineEdit::editingFinished, this, &ColorConverterApp::onHSVTextChanged);
+
     // Кнопка выбора цвета
     connect(colorPickerBtn, &QPushButton::clicked, this, &ColorConverterApp::openColorPicker);
+}
+
+// Обработка ручного ввода RGB
+void ColorConverterApp::onRGBTextChanged()
+{
+    processRGBInput();
+}
+
+// Обработка ручного ввода CMYK
+void ColorConverterApp::onCMYKTextChanged()
+{
+    processCMYKInput();
+}
+
+// Обработка ручного ввода HSV
+void ColorConverterApp::onHSVTextChanged()
+{
+    processHSVInput();
+}
+
+void ColorConverterApp::processRGBInput()
+{
+    bool rOk, gOk, bOk;
+    int r = rEdit->text().toInt(&rOk);
+    int g = gEdit->text().toInt(&gOk);
+    int b = bEdit->text().toInt(&bOk);
+
+    if (rOk && gOk && bOk && isValidRGB(r, g, b)) {
+        clearWarning();
+        rSlider->setValue(r);
+        rSpin->setValue(r);
+        gSlider->setValue(g);
+        gSpin->setValue(g);
+        bSlider->setValue(b);
+        bSpin->setValue(b);
+        updateFromRGB();
+    } else {
+        showWarning("Ошибка: RGB значения должны быть целыми числами 0-255!");
+    }
+}
+
+void ColorConverterApp::processCMYKInput()
+{
+    bool cOk, mOk, yOk, kOk;
+    double c = cEdit->text().toDouble(&cOk);
+    double m = mEdit->text().toDouble(&mOk);
+    double y = yEdit->text().toDouble(&yOk);
+    double k = kEdit->text().toDouble(&kOk);
+
+    if (cOk && mOk && yOk && kOk && isValidCMYK(c, m, y, k)) {
+        clearWarning();
+        cSlider->setValue(static_cast<int>(c * 10));
+        cSpin->setValue(c);
+        mSlider->setValue(static_cast<int>(m * 10));
+        mSpin->setValue(m);
+        ySlider->setValue(static_cast<int>(y * 10));
+        ySpin->setValue(y);
+        kSlider->setValue(static_cast<int>(k * 10));
+        kSpin->setValue(k);
+        updateFromCMYK();
+    } else {
+        showWarning("Ошибка: CMYK значения должны быть числами 0.0-100.0!");
+    }
+}
+
+void ColorConverterApp::processHSVInput()
+{
+    bool hOk, sOk, vOk;
+    int h = hEdit->text().toInt(&hOk);
+    int s = sEdit->text().toInt(&sOk);
+    int v = vEdit->text().toInt(&vOk);
+
+    if (hOk && sOk && vOk && isValidHSV(h, s, v)) {
+        clearWarning();
+        hSlider->setValue(h);
+        hSpin->setValue(h);
+        sSlider->setValue(s);
+        sSpin->setValue(s);
+        vSlider->setValue(v);
+        vSpin->setValue(v);
+        updateFromHSV();
+    } else {
+        showWarning("Ошибка: H должен быть 0-359, S и V должны быть 0-255!");
+    }
+}
+
+// Проверка валидности RGB значений
+bool ColorConverterApp::isValidRGB(int r, int g, int b)
+{
+    return (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255);
+}
+
+// Проверка валидности CMYK значений
+bool ColorConverterApp::isValidCMYK(double c, double m, double y, double k)
+{
+    return (c >= 0.0 && c <= 100.0 && m >= 0.0 && m <= 100.0 &&
+            y >= 0.0 && y <= 100.0 && k >= 0.0 && k <= 100.0);
+}
+
+// Проверка валидности HSV значений
+bool ColorConverterApp::isValidHSV(int h, int s, int v)
+{
+    return (h >= 0 && h <= 359 && s >= 0 && s <= 255 && v >= 0 && v <= 255);
 }
 
 // Конвертация CMYK to RGB
@@ -298,10 +508,22 @@ void ColorConverterApp::updateFromRGB()
     int g = gSlider->value();
     int b = bSlider->value();
 
+    // Проверка валидности значений
+    if (!isValidRGB(r, g, b)) {
+        showWarning("Ошибка: Недопустимые значения RGB!");
+        updatingFromRGB = false;
+        return;
+    }
+
     // Синхронизация слайдеров и спинбоксов
     rSpin->setValue(r);
     gSpin->setValue(g);
     bSpin->setValue(b);
+
+    // Обновление полей ручного ввода
+    rEdit->setText(QString::number(r));
+    gEdit->setText(QString::number(g));
+    bEdit->setText(QString::number(b));
 
     // Конвертация в CMYK
     double c, m, y, k;
@@ -317,6 +539,12 @@ void ColorConverterApp::updateFromRGB()
     ySpin->setValue(y);
     kSpin->setValue(k);
 
+    // Обновление полей ручного ввода CMYK
+    cEdit->setText(QString::number(c, 'f', 1));
+    mEdit->setText(QString::number(m, 'f', 1));
+    yEdit->setText(QString::number(y, 'f', 1));
+    kEdit->setText(QString::number(k, 'f', 1));
+
     // Конвертация в HSV
     int h, s, v;
     rgbToHsv(r, g, b, h, s, v);
@@ -328,6 +556,11 @@ void ColorConverterApp::updateFromRGB()
     hSpin->setValue(h);
     sSpin->setValue(s);
     vSpin->setValue(v);
+
+    // Обновление полей ручного ввода HSV
+    hEdit->setText(QString::number(h));
+    sEdit->setText(QString::number(s));
+    vEdit->setText(QString::number(v));
 
     // Обновление цвета
     currentColor = QColor(r, g, b);
@@ -348,11 +581,24 @@ void ColorConverterApp::updateFromCMYK()
     double y = ySlider->value() / 10.0;
     double k = kSlider->value() / 10.0;
 
+    // Проверка валидности значений
+    if (!isValidCMYK(c, m, y, k)) {
+        showWarning("Ошибка: Недопустимые значения CMYK!");
+        updatingFromCMYK = false;
+        return;
+    }
+
     // Синхронизация слайдеров и спинбоксов
     cSpin->setValue(c);
     mSpin->setValue(m);
     ySpin->setValue(y);
     kSpin->setValue(k);
+
+    // Обновление полей ручного ввода
+    cEdit->setText(QString::number(c, 'f', 1));
+    mEdit->setText(QString::number(m, 'f', 1));
+    yEdit->setText(QString::number(y, 'f', 1));
+    kEdit->setText(QString::number(k, 'f', 1));
 
     // Конвертация в RGB
     QColor rgbColor = cmykToRgb(c, m, y, k);
@@ -365,6 +611,11 @@ void ColorConverterApp::updateFromCMYK()
     gSpin->setValue(rgbColor.green());
     bSpin->setValue(rgbColor.blue());
 
+    // Обновление полей ручного ввода RGB
+    rEdit->setText(QString::number(rgbColor.red()));
+    gEdit->setText(QString::number(rgbColor.green()));
+    bEdit->setText(QString::number(rgbColor.blue()));
+
     // Конвертация в HSV
     int h, s, v;
     rgbToHsv(rgbColor.red(), rgbColor.green(), rgbColor.blue(), h, s, v);
@@ -376,6 +627,11 @@ void ColorConverterApp::updateFromCMYK()
     hSpin->setValue(h);
     sSpin->setValue(s);
     vSpin->setValue(v);
+
+    // Обновление полей ручного ввода HSV
+    hEdit->setText(QString::number(h));
+    sEdit->setText(QString::number(s));
+    vEdit->setText(QString::number(v));
 
     // Обновление цвета
     currentColor = rgbColor;
@@ -395,10 +651,22 @@ void ColorConverterApp::updateFromHSV()
     int s = sSlider->value();
     int v = vSlider->value();
 
+    // Проверка валидности значений
+    if (!isValidHSV(h, s, v)) {
+        showWarning("Ошибка: Недопустимые значения HSV!");
+        updatingFromHSV = false;
+        return;
+    }
+
     // Синхронизация слайдеров и спинбоксов
     hSpin->setValue(h);
     sSpin->setValue(s);
     vSpin->setValue(v);
+
+    // Обновление полей ручного ввода
+    hEdit->setText(QString::number(h));
+    sEdit->setText(QString::number(s));
+    vEdit->setText(QString::number(v));
 
     // Конвертация в RGB
     QColor rgbColor = hsvToRgb(h, s, v);
@@ -410,6 +678,11 @@ void ColorConverterApp::updateFromHSV()
     rSpin->setValue(rgbColor.red());
     gSpin->setValue(rgbColor.green());
     bSpin->setValue(rgbColor.blue());
+
+    // Обновление полей ручного ввода RGB
+    rEdit->setText(QString::number(rgbColor.red()));
+    gEdit->setText(QString::number(rgbColor.green()));
+    bEdit->setText(QString::number(rgbColor.blue()));
 
     // Конвертация в CMYK
     double c, m, y, k;
@@ -424,6 +697,12 @@ void ColorConverterApp::updateFromHSV()
     mSpin->setValue(m);
     ySpin->setValue(y);
     kSpin->setValue(k);
+
+    // Обновление полей ручного ввода CMYK
+    cEdit->setText(QString::number(c, 'f', 1));
+    mEdit->setText(QString::number(m, 'f', 1));
+    yEdit->setText(QString::number(y, 'f', 1));
+    kEdit->setText(QString::number(k, 'f', 1));
 
     // Обновление цвета
     currentColor = rgbColor;

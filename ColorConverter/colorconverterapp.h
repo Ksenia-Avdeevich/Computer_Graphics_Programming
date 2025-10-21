@@ -12,6 +12,7 @@
 #include <QColorDialog>
 #include <QMessageBox>
 #include <QHBoxLayout>
+#include <QDoubleSpinBox>
 
 class ColorConverterApp : public QMainWindow
 {
@@ -28,18 +29,26 @@ private slots:
     void openColorPicker();
     void updateColorDisplay();
 
+    // Новые слоты для ручного ввода
+    void onRGBTextChanged();
+    void onCMYKTextChanged();
+    void onHSVTextChanged();
+
 private:
     // RGB компоненты
     QSlider *rSlider, *gSlider, *bSlider;
     QSpinBox *rSpin, *gSpin, *bSpin;
+    QLineEdit *rEdit, *gEdit, *bEdit;
 
     // CMYK компоненты
     QSlider *cSlider, *mSlider, *ySlider, *kSlider;
     QDoubleSpinBox *cSpin, *mSpin, *ySpin, *kSpin;
+    QLineEdit *cEdit, *mEdit, *yEdit, *kEdit;
 
     // HSV компоненты
     QSlider *hSlider, *sSlider, *vSlider;
     QSpinBox *hSpin, *sSpin, *vSpin;
+    QLineEdit *hEdit, *sEdit, *vEdit;
 
     // Элементы интерфейса
     QLabel *colorDisplay;
@@ -66,8 +75,20 @@ private:
     void showWarning(const QString &message);
     void clearWarning();
 
-    // Добавлен объявление недостающего метода
-    QHBoxLayout* createSliderSpinLayout(QSlider *slider, QWidget *spin);
+    QHBoxLayout* createSliderSpinLayout(QSlider *slider, QWidget *spin, QLineEdit *edit = nullptr);
+    QHBoxLayout* createRGBRow(QSlider *slider, QSpinBox *spin, QLineEdit *edit);
+    QHBoxLayout* createCMYKRow(QSlider *slider, QDoubleSpinBox *spin, QLineEdit *edit);
+    QHBoxLayout* createHSVRow(QSlider *slider, QSpinBox *spin, QLineEdit *edit);
+
+    // Новые методы для проверки значений
+    bool isValidRGB(int r, int g, int b);
+    bool isValidCMYK(double c, double m, double y, double k);
+    bool isValidHSV(int h, int s, int v);
+
+    // Методы для обработки ручного ввода
+    void processRGBInput();
+    void processCMYKInput();
+    void processHSVInput();
 };
 
 #endif // COLORCONVERTERAPP_H
