@@ -4,6 +4,8 @@
 #include <chrono>
 #include <QSet>
 #include <QPair>
+#include <QMap>
+#include <QPoint>
 
 using namespace std::chrono;
 
@@ -14,18 +16,6 @@ AlgorithmStep createStep(int x, int y, const QString &description = QString(), d
     step.setDescription(description);
     step.setIntensity(intensity);
     return step;
-}
-
-void swapValues(int &a, int &b) {
-    int temp = a;
-    a = b;
-    b = temp;
-}
-
-void swapValues(double &a, double &b) {
-    double temp = a;
-    a = b;
-    b = temp;
 }
 
 void addUniqueStep(QVector<AlgorithmStep> &steps, const AlgorithmStep &newStep) {
@@ -40,10 +30,6 @@ void addUniqueStep(QVector<AlgorithmStep> &steps, const AlgorithmStep &newStep) 
     if (lastPoint.x() != newPoint.x() || lastPoint.y() != newPoint.y()) {
         steps.append(newStep);
     }
-}
-
-int calculateDistance(int x1, int y1, int x2, int y2) {
-    return std::max(std::abs(x2 - x1), std::abs(y2 - y1));
 }
 
 double fractionalPart(double x) {
@@ -65,24 +51,57 @@ AlgorithmResult RasterAlgorithms::stepByStep(const Point &start, const Point &en
 
     QVector<AlgorithmStep> steps;
 
+    // 1. Одна точка
     if (dx == 0 && dy == 0) {
-        // Single point
         steps.append(createStep(x0, y0, "Single point", 1.0));
-    } else if (dx == 0) {
-        // Vertical line
+    }
+    // 2. Вертикальная линия
+    else if (dx == 0) {
         int stepY = (dy > 0) ? 1 : -1;
-        for (int y = y0; y != y1 + stepY; y += stepY) {
-            addUniqueStep(steps, createStep(x0, y, QString("y=%1").arg(y), 1.0));
+        for (int y = y0; ; y += stepY) {
+            addUniqueStep(steps, createStep(x0, y, QString("x=%1, y=%2").arg(x0).arg(y), 1.0));
+            if (y == y1) break;
         }
-    } else {
-        // General case
+    }
+    // 3. Горизонтальная линия
+    else if (dy == 0) {
+        int stepX = (dx > 0) ? 1 : -1;
+        for (int x = x0; ; x += stepX) {
+            addUniqueStep(steps, createStep(x, y0, QString("x=%1, y=%2").arg(x).arg(y0), 1.0));
+            if (x == x1) break;
+        }
+    }
+    // 4. Общий случай (линия с наклоном)
+    else {
         double slope = double(dy) / double(dx);
+
+        // Определяем направление движения по X
         int stepX = (dx > 0) ? 1 : -1;
 
-        for (int x = x0; x != x1 + stepX; x += stepX) {
-            double exactY = y0 + slope * (x - x0);
-            int roundedY = int(std::round(exactY));
-            addUniqueStep(steps, createStep(x, roundedY, QString("y=%.2f").arg(exactY), 1.0));
+        // Идем от x0 до x1 включительно
+        int stepsCount = std::abs(dx) + 1;
+
+        for (int i = 0; i < stepsCount; ++i) {
+            int currentX = x0 + i * stepX;
+            double exactY = y0 + slope * (currentX - x0);
+
+            // Правильное округление для отрицательных чисел
+            int roundedY;
+            if (exactY >= 0) {
+                roundedY = int(exactY + 0.5);
+            } else {
+                roundedY = int(exactY - 0.5);
+            }
+
+            addUniqueStep(steps, createStep(
+                                     currentX,
+                                     roundedY,
+                                     QString("x=%1, exact y=%.2f, rounded y=%2")
+                                         .arg(currentX)
+                                         .arg(exactY)
+                                         .arg(roundedY),
+                                     1.0
+                                     ));
         }
     }
 
@@ -90,34 +109,33 @@ AlgorithmResult RasterAlgorithms::stepByStep(const Point &start, const Point &en
     result.setExecutionTime(high_resolution_clock::now() - startTime);
     return result;
 }
-
 AlgorithmResult RasterAlgorithms::digitalDifferentialAnalyzer(const Point &start, const Point &end) {
     AlgorithmResult result;
     auto startTime = high_resolution_clock::now();
 
     int x0 = start.x(), y0 = start.y();
     int x1 = end.x(), y1 = end.y();
+    int dx = x1 - x0, dy = y1 - y0;
 
     QVector<AlgorithmStep> steps;
+    int L = std::max(std::abs(dx), std::abs(dy));
 
-    int length = calculateDistance(x0, y0, x1, y1);
-
-    if (length == 0) {
+    if (L == 0) {
         steps.append(createStep(x0, y0, "Single point", 1.0));
         result.setSteps(steps);
         result.setExecutionTime(high_resolution_clock::now() - startTime);
         return result;
     }
 
-    double xIncrement = double(x1 - x0) / length;
-    double yIncrement = double(y1 - y0) / length;
+    double xIncrement = double(dx) / L;
+    double yIncrement = double(dy) / L;
 
-    double currentX = x0;
-    double currentY = y0;
+    double currentX = x0 + 0.5; // Start from pixel center
+    double currentY = y0 + 0.5;
 
-    for (int i = 0; i <= length; ++i) {
-        int pixelX = int(std::round(currentX));
-        int pixelY = int(std::round(currentY));
+    for (int i = 0; i <= L; ++i) {
+        int pixelX = int(std::floor(currentX));
+        int pixelY = int(std::floor(currentY));
         addUniqueStep(steps, createStep(pixelX, pixelY, QString("Step %1").arg(i), 1.0));
 
         currentX += xIncrement;
@@ -138,31 +156,37 @@ AlgorithmResult RasterAlgorithms::bresenhamLine(const Point &start, const Point 
 
     QVector<AlgorithmStep> steps;
 
-    int dx = std::abs(x1 - x0);
+    bool steep = std::abs(y1 - y0) > std::abs(x1 - x0);
+
+    // If line is steep, swap x and y
+    if (steep) {
+        std::swap(x0, y0);
+        std::swap(x1, y1);
+    }
+
+    // Ensure drawing from left to right
+    if (x0 > x1) {
+        std::swap(x0, x1);
+        std::swap(y0, y1);
+    }
+
+    int dx = x1 - x0;
     int dy = std::abs(y1 - y0);
+    int error = dx / 2;
+    int ystep = (y0 < y1) ? 1 : -1;
+    int y = y0;
 
-    int stepX = (x0 < x1) ? 1 : -1;
-    int stepY = (y0 < y1) ? 1 : -1;
-
-    int error = dx - dy;
-    int currentX = x0;
-    int currentY = y0;
-
-    while (true) {
-        addUniqueStep(steps, createStep(currentX, currentY, QString("Error=%1").arg(error), 1.0));
-
-        if (currentX == x1 && currentY == y1) break;
-
-        int doubleError = 2 * error;
-
-        if (doubleError > -dy) {
-            error -= dy;
-            currentX += stepX;
+    for (int x = x0; x <= x1; ++x) {
+        if (steep) {
+            addUniqueStep(steps, createStep(y, x, QString("Error=%1").arg(error), 1.0));
+        } else {
+            addUniqueStep(steps, createStep(x, y, QString("Error=%1").arg(error), 1.0));
         }
 
-        if (doubleError < dx) {
+        error -= dy;
+        if (error < 0) {
+            y += ystep;
             error += dx;
-            currentY += stepY;
         }
     }
 
@@ -175,13 +199,15 @@ AlgorithmResult RasterAlgorithms::bresenhamCircle(const Point &center, const Poi
     AlgorithmResult result;
     auto startTime = high_resolution_clock::now();
 
-    int centerX = center.x(), centerY = center.y();
-    int radius = std::abs(radiusPoint.x());
+    // Calculate radius as distance between center and radiusPoint
+    int dx = radiusPoint.x() - center.x();
+    int dy = radiusPoint.y() - center.y();
+    int radius = int(std::sqrt(dx*dx + dy*dy));
 
     QVector<AlgorithmStep> steps;
 
     if (radius <= 0) {
-        steps.append(createStep(centerX, centerY, "Zero radius", 1.0));
+        steps.append(createStep(center.x(), center.y(), "Zero radius", 1.0));
         result.setSteps(steps);
         result.setExecutionTime(high_resolution_clock::now() - startTime);
         return result;
@@ -193,7 +219,7 @@ AlgorithmResult RasterAlgorithms::bresenhamCircle(const Point &center, const Poi
         QPair<int, int> pixel(x, y);
         if (!drawnPixels.contains(pixel)) {
             drawnPixels.insert(pixel);
-            addUniqueStep(steps, createStep(x, y, QString(), 1.0));
+            addUniqueStep(steps, createStep(x, y, QString("R=%1").arg(radius), 1.0));
         }
     };
 
@@ -203,14 +229,14 @@ AlgorithmResult RasterAlgorithms::bresenhamCircle(const Point &center, const Poi
 
     while (x <= y) {
         // Draw all eight symmetric points
-        addPixel(centerX + x, centerY + y);
-        addPixel(centerX - x, centerY + y);
-        addPixel(centerX + x, centerY - y);
-        addPixel(centerX - x, centerY - y);
-        addPixel(centerX + y, centerY + x);
-        addPixel(centerX - y, centerY + x);
-        addPixel(centerX + y, centerY - x);
-        addPixel(centerX - y, centerY - x);
+        addPixel(center.x() + x, center.y() + y);
+        addPixel(center.x() - x, center.y() + y);
+        addPixel(center.x() + x, center.y() - y);
+        addPixel(center.x() - x, center.y() - y);
+        addPixel(center.x() + y, center.y() + x);
+        addPixel(center.x() - y, center.y() + x);
+        addPixel(center.x() + y, center.y() - x);
+        addPixel(center.x() - y, center.y() - x);
 
         if (decisionParameter < 0) {
             decisionParameter = decisionParameter + 4 * x + 6;
@@ -226,6 +252,95 @@ AlgorithmResult RasterAlgorithms::bresenhamCircle(const Point &center, const Poi
     return result;
 }
 
+AlgorithmResult RasterAlgorithms::kastlPitvey(const Point &start, const Point &end) {
+    AlgorithmResult result;
+    auto startTime = high_resolution_clock::now();
+
+    int x0 = start.x(), y0 = start.y();
+    int x1 = end.x(), y1 = end.y();
+
+    QVector<AlgorithmStep> steps;
+
+    if (x0 == x1 && y0 == y1) {
+        steps.append(createStep(x0, y0, "Single point", 1.0));
+        result.setSteps(steps);
+        result.setExecutionTime(high_resolution_clock::now() - startTime);
+        return result;
+    }
+
+    int ax = x0, ay = y0, bx = x1, by = y1;
+    if (bx < ax) { std::swap(ax, bx); std::swap(ay, by); }
+
+    int dx = bx - ax;
+    int dy = by - ay;
+
+    bool swapped_xy = false;
+    bool reflect_x = false;
+    bool reflect_y = false;
+
+    if (dy < 0) { ay = -ay; by = -by; dy = -dy; reflect_y = true; }
+    if (dx < 0) { ax = -ax; bx = -bx; dx = -dx; reflect_x = true; }
+    if (dy > dx) { std::swap(ax, ay); std::swap(bx, by); std::swap(dx, dy); swapped_xy = true; }
+
+    QVector<int> lowerY; lowerY.reserve(dx+1);
+    QVector<int> upperY; upperY.reserve(dx+1);
+    for (int xi = 0; xi <= dx; ++xi) {
+        double xr = ax + xi;
+        double yf = ay + (dx == 0 ? 0.0 : double(dy) * double(xr - ax) / double(dx));
+        int lf = int(std::floor(yf + 1e-9));
+        int uf = int(std::ceil(yf - 1e-9));
+        lowerY.append(lf);
+        upperY.append(uf);
+    }
+
+    QString route;
+    int ycur = lowerY[0];
+    for (int i = 0; i < dx; ++i) {
+        bool canS = (ycur >= lowerY[i+1] && ycur <= upperY[i+1]);
+        bool canD = (ycur + 1 >= lowerY[i+1] && ycur + 1 <= upperY[i+1]);
+        double xr = ax + i + 1;
+        double yf = ay + (dx == 0 ? 0.0 : double(dy) * double(xr - ax) / double(dx));
+        if (canS && !canD) { route.push_back('S'); }
+        else if (!canS && canD) { route.push_back('D'); ++ycur; }
+        else {
+            if (std::abs(ycur - yf) <= std::abs((ycur+1) - yf)) route.push_back('S');
+            else { route.push_back('D'); ++ycur; }
+        }
+    }
+
+    QVector<QPoint> pixels;
+    pixels.reserve(route.size() + 1);
+    int tx = ax;
+    int ty = int(std::round(double(ay)));
+    pixels.append(QPoint(tx, ty));
+    int ycur2 = ty;
+    for (int i = 0; i < route.size(); ++i) {
+        char c = route[i].toLatin1();
+        if (c == 'S') { tx += 1; }
+        else { tx += 1; ycur2 += 1; }
+        if (pixels.isEmpty() || pixels.last() != QPoint(tx, ycur2))
+            pixels.append(QPoint(tx, ycur2));
+    }
+
+    QVector<AlgorithmStep> outSteps;
+    outSteps.reserve(pixels.size());
+    for (QPoint p : pixels) {
+        int rx = p.x(), ry = p.y();
+        if (swapped_xy) std::swap(rx, ry);
+        if (reflect_x) rx = -rx;
+        if (reflect_y) ry = -ry;
+        if (!outSteps.isEmpty()) {
+            Point prev = outSteps.last().getCoordinates();
+            if (prev.x() == rx && prev.y() == ry) continue;
+        }
+        outSteps.append(createStep(rx, ry, QString("route:%1").arg(route), 1.0));
+    }
+
+    result.setSteps(outSteps);
+    result.setExecutionTime(high_resolution_clock::now() - startTime);
+    return result;
+}
+
 
 AlgorithmResult RasterAlgorithms::wuAntiAliasedLine(const Point &start, const Point &end) {
     AlgorithmResult result;
@@ -234,117 +349,104 @@ AlgorithmResult RasterAlgorithms::wuAntiAliasedLine(const Point &start, const Po
     double x0 = start.x(), y0 = start.y();
     double x1 = end.x(), y1 = end.y();
 
-    QVector<AlgorithmStep> steps;
-
-    // Проверка вырожденного случая
     if (std::abs(x1 - x0) < 1e-6 && std::abs(y1 - y0) < 1e-6) {
+        QVector<AlgorithmStep> steps;
         steps.append(createStep(int(x0), int(y0), "Single point", 1.0));
         result.setSteps(steps);
         result.setExecutionTime(high_resolution_clock::now() - startTime);
         return result;
     }
 
-    // Определяем, является ли линия крутой (наклон > 45 градусов)
-    bool isSteep = std::abs(y1 - y0) > std::abs(x1 - x0);
+    bool steep = std::abs(y1 - y0) > std::abs(x1 - x0);
 
-    // Если линия крутая, меняем координаты x и y местами
-    if (isSteep) {
-        swapValues(x0, y0);
-        swapValues(x1, y1);
+    if (steep) {
+        std::swap(x0, y0);
+        std::swap(x1, y1);
     }
 
-    // Гарантируем, что рисуем слева направо
     if (x0 > x1) {
-        swapValues(x0, x1);
-        swapValues(y0, y1);
+        std::swap(x0, x1);
+        std::swap(y0, y1);
     }
 
     double dx = x1 - x0;
     double dy = y1 - y0;
-    double gradient = (std::abs(dx) < 1e-6) ? 1.0 : dy / dx;
+    double gradient = (dx == 0.0) ? 1.0 : dy / dx;
 
-    // Функция для добавления пикселя с учетом интенсивности
-    auto plotPixel = [&](double x, double y, double intensity, const QString &description = "") {
-        int pixelX, pixelY;
-        if (isSteep) {
-            pixelX = int(std::round(y));
-            pixelY = int(std::round(x));
+    QVector<AlgorithmStep> steps;
+
+    // Helper function to plot with intensity
+    auto plot = [&](double x, double y, double intensity, const QString &note = "") {
+        if (intensity <= 0.0) return;
+
+        int px, py;
+        if (steep) {
+            px = int(std::round(y));
+            py = int(std::round(x));
         } else {
-            pixelX = int(std::round(x));
-            pixelY = int(std::round(y));
+            px = int(std::round(x));
+            py = int(std::round(y));
         }
-        addUniqueStep(steps, createStep(pixelX, pixelY, description, intensity));
+
+        // Clamp intensity to [0, 1]
+        intensity = std::max(0.0, std::min(1.0, intensity));
+
+        // Check if this pixel already exists
+        bool found = false;
+        for (AlgorithmStep &s : steps) {
+            Point p = s.getCoordinates();
+            if (p.x() == px && p.y() == py) {
+                // Sum intensities for the same pixel
+                s.setIntensity(std::min(1.0, s.getIntensity() + intensity));
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            steps.append(createStep(px, py, note, intensity));
+        }
     };
 
-    // Обрабатываем первую точку
-    double xEnd = std::round(x0);
-    double yEnd = y0 + gradient * (xEnd - x0);
-    double xGap = reverseFractionalPart(x0 + 0.5);
+    // First endpoint
+    double xend = std::round(x0);
+    double yend = y0 + gradient * (xend - x0);
+    double xgap = reverseFractionalPart(x0 + 0.5);
+    int xpxl1 = int(xend);
+    int ypxl1 = int(std::floor(yend));
 
-    int xPixel1 = int(xEnd);
-    int yPixel1 = int(std::floor(yEnd));
+    plot(xpxl1, ypxl1, reverseFractionalPart(yend) * xgap, "first main");
+    plot(xpxl1, ypxl1 + 1, fractionalPart(yend) * xgap, "first secondary");
 
-    // Рисуем два пикселя для первой точки с разной интенсивностью
-    plotPixel(xPixel1, yPixel1, reverseFractionalPart(yEnd) * xGap,
-              QString("First point - main: %1").arg(reverseFractionalPart(yEnd) * xGap, 0, 'f', 2));
-    plotPixel(xPixel1, yPixel1 + 1, fractionalPart(yEnd) * xGap,
-              QString("First point - secondary: %1").arg(fractionalPart(yEnd) * xGap, 0, 'f', 2));
+    double intery = yend + gradient;
 
-    double intery = yEnd + gradient; // Y-пересечение для следующего шага
+    // Second endpoint
+    xend = std::round(x1);
+    yend = y1 + gradient * (xend - x1);
+    xgap = fractionalPart(x1 + 0.5);
+    int xpxl2 = int(xend);
+    int ypxl2 = int(std::floor(yend));
 
-    // Обрабатываем вторую точку
-    xEnd = std::round(x1);
-    yEnd = y1 + gradient * (xEnd - x1);
-    xGap = fractionalPart(x1 + 0.5);
+    plot(xpxl2, ypxl2, reverseFractionalPart(yend) * xgap, "last main");
+    plot(xpxl2, ypxl2 + 1, fractionalPart(yend) * xgap, "last secondary");
 
-    int xPixel2 = int(xEnd);
-    int yPixel2 = int(std::floor(yEnd));
-
-    // Рисуем два пикселя для последней точки с разной интенсивностью
-    plotPixel(xPixel2, yPixel2, reverseFractionalPart(yEnd) * xGap,
-              QString("Last point - main: %1").arg(reverseFractionalPart(yEnd) * xGap, 0, 'f', 2));
-    plotPixel(xPixel2, yPixel2 + 1, fractionalPart(yEnd) * xGap,
-              QString("Last point - secondary: %1").arg(fractionalPart(yEnd) * xGap, 0, 'f', 2));
-
-    // Основной цикл - рисуем промежуточные точки
-    for (int x = xPixel1 + 1; x <= xPixel2 - 1; ++x) {
-        // Рисуем два пикселя для каждой x-координаты с разной интенсивностью
-        plotPixel(x, int(std::floor(intery)), reverseFractionalPart(intery),
-                  QString("X=%1, lower: %2").arg(x).arg(reverseFractionalPart(intery), 0, 'f', 2));
-        plotPixel(x, int(std::floor(intery)) + 1, fractionalPart(intery),
-                  QString("X=%1, upper: %2").arg(x).arg(fractionalPart(intery), 0, 'f', 2));
-
+    // Main loop
+    for (int x = xpxl1 + 1; x <= xpxl2 - 1; ++x) {
+        plot(x, std::floor(intery), reverseFractionalPart(intery), QString("x=%1 lower").arg(x));
+        plot(x, std::floor(intery) + 1, fractionalPart(intery), QString("x=%1 upper").arg(x));
         intery += gradient;
     }
 
-    // Убираем дубликаты и объединяем интенсивности для одинаковых пикселей
-    QVector<AlgorithmStep> optimizedSteps;
-    QMap<QPair<int, int>, double> pixelIntensities;
+    // Sort steps by coordinates for consistent output
+    std::sort(steps.begin(), steps.end(),
+              [](const AlgorithmStep &a, const AlgorithmStep &b) {
+                  Point pa = a.getCoordinates();
+                  Point pb = b.getCoordinates();
+                  if (pa.x() != pb.x()) return pa.x() < pb.x();
+                  return pa.y() < pb.y();
+              });
 
-    for (const AlgorithmStep &step : steps) {
-        Point p = step.getCoordinates();
-        QPair<int, int> key(p.x(), p.y());
-
-        if (pixelIntensities.contains(key)) {
-            // Берем максимальную интенсивность для пикселя
-            pixelIntensities[key] = std::max(pixelIntensities[key], step.getIntensity());
-        } else {
-            pixelIntensities[key] = step.getIntensity();
-        }
-    }
-
-    // Создаем финальный список шагов
-    for (auto it = pixelIntensities.begin(); it != pixelIntensities.end(); ++it) {
-        int x = it.key().first;
-        int y = it.key().second;
-        double intensity = it.value();
-
-        optimizedSteps.append(createStep(x, y,
-                                         QString("Final intensity: %1").arg(intensity, 0, 'f', 2),
-                                         intensity));
-    }
-
-    result.setSteps(optimizedSteps);
+    result.setSteps(steps);
     result.setExecutionTime(high_resolution_clock::now() - startTime);
     return result;
 }

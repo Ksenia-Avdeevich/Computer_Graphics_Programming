@@ -10,6 +10,7 @@ class AlgorithmResult {
 public:
     AlgorithmResult() : executionTime(std::chrono::duration<double>::zero()) {}
 
+
     void setSteps(const QVector<AlgorithmStep>& steps) { algorithmSteps = steps; }
     const QVector<AlgorithmStep>& getSteps() const { return algorithmSteps; }
 
@@ -23,6 +24,7 @@ private:
 
 class RasterAlgorithms {
 public:
+    static AlgorithmResult kastlPitvey(const Point &start, const Point &end);
     static AlgorithmResult stepByStep(const Point &start, const Point &end);
     static AlgorithmResult digitalDifferentialAnalyzer(const Point &start, const Point &end);
     static AlgorithmResult bresenhamLine(const Point &start, const Point &end);

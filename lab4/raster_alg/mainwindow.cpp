@@ -35,6 +35,7 @@ void MainWindow::setupInterface() {
     algorithmSelector->addItem("Алгоритм Брезенхема (линия)");
     algorithmSelector->addItem("Алгоритм Брезенхема (окружность)");
     algorithmSelector->addItem("Алгоритм Ву (сглаживание)");
+    algorithmSelector->addItem("Алгоритм Кастла-Питвея");
 
     pointAXSpin = new QSpinBox(this);
     pointAYSpin = new QSpinBox(this);
@@ -121,6 +122,7 @@ void MainWindow::executeAlgorithm() {
     case 2: result = RasterAlgorithms::bresenhamLine(A, B); break;
     case 3: result = RasterAlgorithms::bresenhamCircle(A, B); break;
     case 4: result = RasterAlgorithms::wuAntiAliasedLine(A, B); break;
+    case 5: result = RasterAlgorithms::kastlPitvey(A, B); break;
     }
 
     canvas->setAlgorithmSteps(result.getSteps());
@@ -179,16 +181,15 @@ void MainWindow::exportReport() {
 }
 
 void MainWindow::algorithmSelectionChanged(int index) {
-    Q_UNUSED(index);
-
     // Обновление подсказок в зависимости от выбранного алгоритма
     if (index == 4) { // Алгоритм Ву
         statusInfo->setText("Алгоритм Ву: создает гладкие сглаженные линии с использованием значений интенсивности");
+    } else if (index == 5) { // Алгоритм Кастла-Питвея
+        statusInfo->setText("Алгоритм Кастла-Питвея: оптимальная 8-связная цепочка пикселей с субпиксельной точностью");
     } else {
         statusInfo->setText("Готов");
     }
 }
-
 void MainWindow::setPointACoordinates() {
     QPoint point = canvas->getLastWorldClick();
     pointAXSpin->setValue(point.x());
