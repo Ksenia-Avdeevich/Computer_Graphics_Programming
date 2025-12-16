@@ -7,7 +7,6 @@
 #include <QPair>
 #include "matrix4x4.h"
 
-// Forward declarations
 class QDoubleSpinBox;
 class QPushButton;
 class QComboBox;

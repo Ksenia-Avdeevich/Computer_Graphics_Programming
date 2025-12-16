@@ -203,22 +203,22 @@ void MainWindow::initializeLetterA()
     // Передняя грань (z = 0)
 
     // Левая ножка (от низа к верху)
-    vertices << QVector3D(-2.0, -3.0, 0);   // 0 - низ левой ноги (внешний)
+    vertices << QVector3D(-2.2, -3.0, 0);   // 0 - низ левой ноги (внешний)
     vertices << QVector3D(-1.5, -3.0, 0);   // 1 - низ левой ноги (внутренний)
-    vertices << QVector3D(-0.2, 3.0, 0);    // 2 - верх левой ноги (внутренний)
+    vertices << QVector3D(0, 3.0, 0);    // 2 - верх левой ноги (внутренний)
     vertices << QVector3D(-0.7, 3.0, 0);    // 3 - верх левой ноги (внешний)
 
     // Правая ножка (от низа к верху)
     vertices << QVector3D(1.5, -3.0, 0);    // 4 - низ правой ноги (внутренний)
-    vertices << QVector3D(2.0, -3.0, 0);    // 5 - низ правой ноги (внешний)
+    vertices << QVector3D(2.2, -3.0, 0);    // 5 - низ правой ноги (внешний)
     vertices << QVector3D(0.7, 3.0, 0);     // 6 - верх правой ноги (внешний)
-    vertices << QVector3D(0.2, 3.0, 0);     // 7 - верх правой ноги (внутренний)
+    vertices << QVector3D(0, 3.0, 0);     // 7 - верх правой ноги (внутренний)
 
     // Перекладина
-    vertices << QVector3D(-0.8, 0.0, 0);    // 8 - левая перекладина (низ)
-    vertices << QVector3D(-0.5, 0.8, 0);    // 9 - левая перекладина (верх)
-    vertices << QVector3D(0.5, 0.8, 0);     // 10 - правая перекладина (верх)
-    vertices << QVector3D(0.8, 0.0, 0);     // 11 - правая перекладина (низ)
+    vertices << QVector3D(-0.7, 0.0, 0);    // 8 - левая перекладина (низ)
+    vertices << QVector3D(-0.5, 0.75, 0);    // 9 - левая перекладина (верх)
+    vertices << QVector3D(0.5, 0.75, 0);     // 10 - правая перекладина (верх)
+    vertices << QVector3D(0.7, 0.0, 0);     // 11 - правая перекладина (низ)
 
     // Задняя грань (z = 0.8) - копия передней грани
     int frontCount = vertices.size();
@@ -247,8 +247,8 @@ void MainWindow::initializeLetterA()
     edges << qMakePair(11, 8);  // низ перекладины
 
     // Соединения (где перекладина встречается с ножками)
-    edges << qMakePair(2, 9);   // левая нога к перекладине
-    edges << qMakePair(7, 10);  // правая нога к перекладине
+    //edges << qMakePair(2, 9);   // левая нога к перекладине
+    //edges << qMakePair(7, 10);  // правая нога к перекладине
 
     // Рёбра задней грани (аналогично передней)
     edges << qMakePair(12, 13);
@@ -266,8 +266,8 @@ void MainWindow::initializeLetterA()
     edges << qMakePair(22, 23);
     edges << qMakePair(23, 20);
 
-    edges << qMakePair(14, 21);
-    edges << qMakePair(19, 22);
+    //edges << qMakePair(14, 21);
+    //edges << qMakePair(19, 22);
 
     // Соединяем переднюю и заднюю грани
     for(int i = 0; i < frontCount; i++) {
